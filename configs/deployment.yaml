@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app-controller
+  namespace: default
+  labels:
+    app: my-app-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app-controller
+  template:
+    metadata:
+      labels:
+        app: my-app-controller
+    spec:
+      serviceAccountName: my-app-controller
+      containers:
+      - name: my-app-controller
+        image: localhost:5000/my-app-controller:kind-1723849434
+        imagePullPolicy: Always
+        env:
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        # Add other necessary environment variables and configurations
