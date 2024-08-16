@@ -8,8 +8,9 @@ import (
 
 func main() {
 	ctx := context.Background()
+
 	// Create a new controller
-	c, err := controller.New()
+	c, err := controller.New(ctx)
 	check(err)
 
 	// Start the controller
