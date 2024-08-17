@@ -105,20 +105,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	err = c.client.Get(ctx, pdbKey, pdb)
 	if err != nil {
 		// Create a new PDB
-		pdb := &policyv1.PodDisruptionBudget{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: myApp.Namespace,
-				Name:      myApp.Name,
-			},
-			Spec: policyv1.PodDisruptionBudgetSpec{
-				MaxUnavailable: &intstr.IntOrString{
-					IntVal: 1,
-				},
-				Selector: &metav1.LabelSelector{
-					MatchLabels: labelsForMyApp(myApp.Name),
-				},
-			},
-		}
+		pdb := createPodDisruptionBudget(myApp)
 
 		if err := ctrl.SetControllerReference(myApp, pdb, c.manager.GetScheme()); err != nil {
 			// Error handling
@@ -185,4 +172,22 @@ func createDeployment(myApp *api.MyApp) *appv1.Deployment {
 		},
 	}
 	return deployment
+}
+
+func createPodDisruptionBudget(myApp *api.MyApp) *policyv1.PodDisruptionBudget {
+	pdb := &policyv1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: myApp.Namespace,
+			Name:      myApp.Name,
+		},
+		Spec: policyv1.PodDisruptionBudgetSpec{
+			MaxUnavailable: &intstr.IntOrString{
+				IntVal: 1,
+			},
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labelsForMyApp(myApp.Name),
+			},
+		},
+	}
+	return pdb
 }
