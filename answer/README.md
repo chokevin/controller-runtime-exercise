@@ -51,3 +51,14 @@ At this point your controller should be up and running. You can check the pod ru
 
 ## How to configure the deployment based on what is defined in the MyApp Kind
 
+Now we are in deep in the controller code. The `MyApp{}` struct should contain all the details that are in the manifest files given in `example.yaml`. We were constructed to make a new deployment so we will have to create a `Deployment` struct within our Reconcile method. In the `Reconcile` method we can handle all of the native kubernetes build / clean up as that is where kubernetes will go to fix the state of the world.
+
+Adding a PDB is very similar. Nothing too out of the blue once we are already up and running.
+
+## How to verify the metrics agent
+
+We learned how to expose the metrics agent which is default on port 8080. We can then run a port-forwarding command to verify for ourselves.
+
+`k port-forward my-app-controller-c84cd7b5b-nstpk 8080:8080 `
+
+We then can check `localhost:8080/metrics` and see all of our metrics live!
