@@ -165,8 +165,9 @@ func createDeployment(myApp *api.MyApp) *appv1.Deployment {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  myApp.Name,
-							Image: myApp.Spec.Image,
+							Name:    myApp.Name,
+							Image:   myApp.Spec.Image,
+							Command: myApp.Spec.Args,
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceCPU:    resource.MustParse("100m"),
