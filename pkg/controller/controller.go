@@ -9,8 +9,10 @@ import (
 
 	"github.com/steeling/controller-runtime-exercise/pkg/api"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -78,56 +80,57 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	if err != nil && client.IgnoreNotFound(err) == nil {
 		// Create a new deployment
-		deployment := &appv1.Deployment{
+		dp := createDeployment(myApp)
+
+		if err := ctrl.SetControllerReference(myApp, dp, c.manager.GetScheme()); err != nil {
+			// Error handling
+			return ctrl.Result{}, err
+		}
+
+		err := c.client.Create(ctx, dp)
+		if err != nil {
+			log.Error(err, "unable to create deployment")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	// Check if PDB already exists
+	pdb := &policyv1.PodDisruptionBudget{}
+	pdbKey := client.ObjectKey{
+		Namespace: req.Namespace,
+		Name:      myApp.Name,
+	}
+
+	err = c.client.Get(ctx, pdbKey, pdb)
+	if err != nil {
+		// Create a new PDB
+		pdb := &policyv1.PodDisruptionBudget{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: req.Namespace,
+				Namespace: myApp.Namespace,
 				Name:      myApp.Name,
 			},
-			Spec: appv1.DeploymentSpec{
-				// Set the desired number of replicas
-				Replicas: myApp.Spec.Replicas,
+			Spec: policyv1.PodDisruptionBudgetSpec{
+				MaxUnavailable: &intstr.IntOrString{
+					IntVal: 1,
+				},
 				Selector: &metav1.LabelSelector{
 					MatchLabels: labelsForMyApp(myApp.Name),
-				},
-				// Set the template for the pods
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							"app": myApp.Name,
-						},
-					},
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{
-							{
-								Name:  myApp.Name,
-								Image: myApp.Spec.Image,
-								Resources: corev1.ResourceRequirements{
-									Requests: corev1.ResourceList{
-										corev1.ResourceCPU:    resource.MustParse("100m"),
-										corev1.ResourceMemory: resource.MustParse("128Mi"),
-									},
-									Limits: corev1.ResourceList{
-										corev1.ResourceCPU:    resource.MustParse("200m"),
-										corev1.ResourceMemory: resource.MustParse("256Mi"),
-									},
-								},
-							},
-						},
-					},
 				},
 			},
 		}
 
-		if err := ctrl.SetControllerReference(myApp, deployment, c.manager.GetScheme()); err != nil {
+		if err := ctrl.SetControllerReference(myApp, pdb, c.manager.GetScheme()); err != nil {
 			// Error handling
 			return ctrl.Result{}, err
 		}
-		if err := c.client.Create(ctx, deployment); err != nil {
-			// Error handling
+
+		err := c.client.Create(ctx, pdb)
+		if err != nil {
+			log.Error(err, "unable to create PDB")
 			return ctrl.Result{}, err
 		}
-		// Deployment created successfully
-		return ctrl.Result{}, nil
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	// Deployment already exists, do nothing
@@ -138,4 +141,47 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 // belonging to the given MyApp CR name.
 func labelsForMyApp(name string) map[string]string {
 	return map[string]string{"app": name}
+}
+
+func createDeployment(myApp *api.MyApp) *appv1.Deployment {
+	deployment := &appv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: myApp.Namespace,
+			Name:      myApp.Name,
+		},
+		Spec: appv1.DeploymentSpec{
+			// Set the desired number of replicas
+			Replicas: myApp.Spec.Replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labelsForMyApp(myApp.Name),
+			},
+			// Set the template for the pods
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": myApp.Name,
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  myApp.Name,
+							Image: myApp.Spec.Image,
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("100m"),
+									corev1.ResourceMemory: resource.MustParse("128Mi"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceCPU:    resource.MustParse("200m"),
+									corev1.ResourceMemory: resource.MustParse("256Mi"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	return deployment
 }
