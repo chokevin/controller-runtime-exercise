@@ -2,8 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
-	"os"
 
 	appv1 "k8s.io/api/apps/v1"
 
@@ -15,8 +13,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 type Controller struct {
@@ -28,14 +28,31 @@ func New(ctx context.Context) (*Controller, error) {
 	log.SetLogger(zap.New(zap.UseDevMode(true)))
 	log := log.FromContext(ctx)
 	log.Info("creating a new controller")
-	manager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{})
+	manager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Metrics: metricsserver.Options{
+			BindAddress: ":8080",
+		},
+		HealthProbeBindAddress: ":8081",
+		LeaderElection:         false,
+		LeaderElectionID:       "example-leader-election-id",
+	})
 	if err != nil {
 		return nil, err
 	}
 
+	if err := manager.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		log.Error(err, "unable to set up health check")
+		return nil, err
+	}
+
+	if err := manager.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		log.Error(err, "unable to set up ready check")
+		return nil, err
+	}
+
 	if err := api.AddToScheme(manager.GetScheme()); err != nil {
-		fmt.Printf("Unable to add the custom resource scheme: %v\n", err)
-		os.Exit(1)
+		log.Error(err, "Unable to add the custom resource scheme")
+		return nil, err
 	}
 
 	controller := &Controller{
