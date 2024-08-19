@@ -5,6 +5,7 @@ import (
 
 	appv1 "k8s.io/api/apps/v1"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/steeling/controller-runtime-exercise/pkg/api"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -16,12 +17,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+)
+
+// Define custom metrics
+var (
+	myAppReconcileCounter = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "myapp_reconcile_total",
+			Help: "Number of reconciliations for MyApp",
+		},
+	)
 )
 
 type Controller struct {
 	client  client.Client
 	manager ctrl.Manager
+}
+
+func init() {
+	metrics.Registry.MustRegister(myAppReconcileCounter)
 }
 
 func New(ctx context.Context) (*Controller, error) {
@@ -79,6 +95,9 @@ func (c *Controller) Start(ctx context.Context) error {
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 	log.Info("reconcile request received", "name", req.Name, "namespace", req.Namespace)
+
+	// Increment the custom metric counter
+	myAppReconcileCounter.Inc()
 
 	// Get the MyApp object for which the reconciliation is triggered
 	myApp := &api.MyApp{}
