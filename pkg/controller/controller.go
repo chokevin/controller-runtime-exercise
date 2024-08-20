@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"time"
 
 	appv1 "k8s.io/api/apps/v1"
 
@@ -23,12 +24,24 @@ import (
 
 // Define custom metrics
 var (
-	myAppReconcileCounter = prometheus.NewCounter(
+	myAppReconcileCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "myapp_reconcile_total",
 			Help: "Number of reconciliations for MyApp",
 		},
+		[]string{"namespace", "name"},
 	)
+	reconcileDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "myapp_reconcile_duration_seconds",
+		Help:    "Duration of reconcile loop for MyApp",
+		Buckets: prometheus.DefBuckets,
+	}, []string{"result"})
+)
+
+const (
+	reconcilationError   = "error"
+	reconcilationSuccess = "success"
+	reconcilationSkipped = "skipped"
 )
 
 type Controller struct {
@@ -37,7 +50,7 @@ type Controller struct {
 }
 
 func init() {
-	metrics.Registry.MustRegister(myAppReconcileCounter)
+	metrics.Registry.MustRegister(myAppReconcileCounter, reconcileDuration)
 }
 
 func New(ctx context.Context) (*Controller, error) {
@@ -93,16 +106,18 @@ func (c *Controller) Start(ctx context.Context) error {
 }
 
 func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	start := time.Now()
 	log := log.FromContext(ctx)
 	log.Info("reconcile request received", "name", req.Name, "namespace", req.Namespace)
 
 	// Increment the custom metric counter
-	myAppReconcileCounter.Inc()
+	myAppReconcileCounter.WithLabelValues(req.Namespace, req.Name).Inc()
 
 	// Get the MyApp object for which the reconciliation is triggered
 	myApp := &api.MyApp{}
 	if err := c.client.Get(ctx, req.NamespacedName, myApp); err != nil {
 		// Error handling
+		reconcileDuration.WithLabelValues(reconcilationError).Observe(time.Since(start).Seconds())
 		return ctrl.Result{}, err
 	}
 
@@ -120,6 +135,7 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 		if err := ctrl.SetControllerReference(myApp, dp, c.manager.GetScheme()); err != nil {
 			// Error handling
+			reconcileDuration.WithLabelValues(reconcilationError).Observe(time.Since(start).Seconds())
 			return ctrl.Result{}, err
 		}
 
@@ -128,6 +144,8 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			log.Error(err, "unable to create deployment")
 			return ctrl.Result{}, err
 		}
+
+		reconcileDuration.WithLabelValues(reconcilationSuccess).Observe(time.Since(start).Seconds())
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -145,18 +163,22 @@ func (c *Controller) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 		if err := ctrl.SetControllerReference(myApp, pdb, c.manager.GetScheme()); err != nil {
 			// Error handling
+			reconcileDuration.WithLabelValues(reconcilationError).Observe(time.Since(start).Seconds())
 			return ctrl.Result{}, err
 		}
 
 		err := c.client.Create(ctx, pdb)
 		if err != nil {
 			log.Error(err, "unable to create PDB")
+			reconcileDuration.WithLabelValues(reconcilationError).Observe(time.Since(start).Seconds())
 			return ctrl.Result{}, err
 		}
+		reconcileDuration.WithLabelValues(reconcilationSuccess).Observe(time.Since(start).Seconds())
 		return ctrl.Result{Requeue: true}, nil
 	}
 
 	// Deployment already exists, do nothing
+	reconcileDuration.WithLabelValues(reconcilationSkipped).Observe(time.Since(start).Seconds())
 	return ctrl.Result{}, nil
 }
 

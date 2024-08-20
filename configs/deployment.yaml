@@ -18,7 +18,7 @@ spec:
       serviceAccountName: my-app-controller
       containers:
       - name: my-app-controller
-        image: localhost:5000/my-app-controller:kind-1723855481
+        image: localhost:5000/my-app-controller:kind-1724111337
         imagePullPolicy: Always
         env:
         - name: WATCH_NAMESPACE
