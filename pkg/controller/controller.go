@@ -62,7 +62,7 @@ func New(ctx context.Context) (*Controller, error) {
 			BindAddress: ":8080",
 		},
 		HealthProbeBindAddress: ":8081",
-		LeaderElection:         false,
+		LeaderElection:         true,
 		LeaderElectionID:       "example-leader-election-id",
 	})
 	if err != nil {

@@ -12,9 +12,9 @@ You are the head of your dev ops department, and you'd like to provide your engi
 
 1. ~~Modify the `Reconcile` method to create a Deployment with the provided image, a default set of resources (CPU and mem), and a pod disruption budget.~~
 
-1. Add some custom metrics to the metrics handler, and enable the metrics handler. What's an example metric you might want to keep track of?
+1. ~~Add some custom metrics to the metrics handler, and enable the metrics handler. What's an example metric you might want to keep track of?~~
 
-1. Enable leader election
+1. ~~Enable leader election~~
 
 1. Use a custom queue that orders Reconciliation by name, lexicographically.
 

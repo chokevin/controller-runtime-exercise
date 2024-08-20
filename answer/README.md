@@ -62,3 +62,19 @@ We learned how to expose the metrics agent which is default on port 8080. We can
 `k port-forward my-app-controller-c84cd7b5b-nstpk 8080:8080 `
 
 We then can check `localhost:8080/metrics` and see all of our metrics live!
+
+## What are some metrics that we can add?
+
+1. We can consider adding amount of reconciles / error of reconciles
+
+1. How long does a reconcile take?
+
+1. How long the reconcile queue depth is?
+
+1. How many resources is our controller viewing at once.
+
+## Enabling Leader Election
+
+As we need to scale up our controller to handle more resources inevitably we will have to add more replicas. Thus comes in leader election.
+
+Leader election is simple by enabling the controller initialization with leaderElection set to true.

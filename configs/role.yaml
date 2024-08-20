@@ -4,7 +4,7 @@ metadata:
   name: my-app-controller
 rules:
 - apiGroups: [""]
-  resources: ["pods"]
+  resources: ["pods", "events"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 - apiGroups: ["apps"]
   resources: ["deployments"]
@@ -17,4 +17,7 @@ rules:
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 - apiGroups: ["example.com"]
   resources: ["myapp"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]

@@ -7,7 +7,7 @@ spec:
   replicas: 2
   args:
     - sleep
-    - "5"
+    - "10000"
 ---
 apiVersion: example.com/v1alpha1
 kind: MyApp
@@ -18,7 +18,7 @@ spec:
   replicas: 2
   args:
     - sleep
-    - "5"
+    - "10000"
 ---
 apiVersion: example.com/v1alpha1
 kind: MyApp

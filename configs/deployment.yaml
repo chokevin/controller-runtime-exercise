@@ -6,7 +6,7 @@ metadata:
   labels:
     app: my-app-controller
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: my-app-controller
@@ -18,7 +18,7 @@ spec:
       serviceAccountName: my-app-controller
       containers:
       - name: my-app-controller
-        image: localhost:5000/my-app-controller:kind-1724111337
+        image: localhost:5000/my-app-controller:kind-1724179142
         imagePullPolicy: Always
         env:
         - name: WATCH_NAMESPACE
